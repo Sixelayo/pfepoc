@@ -13,6 +13,7 @@ using namespace std::chrono_literals;
 
 //#define PCD_FPATH "O:\\pfe\\example_pcd\\data-master\\terrain\\CSite2_orig-utm.pcd"
 std::string PCD_FPATH;
+float min_dist_sample;
 
 
 
@@ -33,6 +34,7 @@ void printUsage (const char* progName){
                 << "-v           Viewports example\n"
                 << "-i           Interaction Customization example\n"
                 << "-l           load from a pcd file\n"
+                << "-d           if -l, ressample min dist\n"
                 << "\n\n";
 }
 
@@ -239,7 +241,8 @@ int main (int argc, char** argv){
         return 0;
     }
     bool simple(false), rgb(false), custom_c(false), normals(false),
-        shapes(false), viewports(false), interaction_customization(false), loadFile(false);
+        shapes(false), viewports(false), interaction_customization(false),
+        loadFile(false), re_sample(false);
     if (pcl::console::find_argument (argc, argv, "-s") >= 0){
         simple = true;
         std::cout << "Simple visualisation example\n";
@@ -274,6 +277,17 @@ int main (int argc, char** argv){
         if (index < argc) {
             PCD_FPATH = argv[index];
             std::cout << "File to load: " << PCD_FPATH << "\n";
+            if (pcl::console::find_argument(argc, argv, "-d") >= 0) {
+                re_sample = true;
+                int index = pcl::console::find_argument(argc, argv, "-d") + 1;
+                if (index < argc) {
+                    min_dist_sample = atof(argv[index]);
+                    std::cout << "ressampling min dist btw neighbor: " << min_dist_sample << "\n";
+                } else {
+                    std::cerr << "Error: No float given provided after -d.\n";
+                    exit(-1);
+                }
+            }
         } else {
             std::cerr << "Error: No file path provided after -l.\n";
             exit(-1);
@@ -331,7 +345,7 @@ int main (int argc, char** argv){
     // Create a Point Cloud object
     pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud(new pcl::PointCloud<pcl::PointXYZ>);
     if(loadFile){
-        std::cout << "Generating example point clouds.\n\n";
+        std::cout << "Loading point clouds from file\n\n";
         // Load the PCD file
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(PCD_FPATH, *loaded_cloud) == -1) {
             PCL_ERROR("Couldn't read the PCD file.\n");
@@ -340,6 +354,20 @@ int main (int argc, char** argv){
 
         std::cout << "Loaded " << loaded_cloud->width * loaded_cloud->height
                 << " data points from " << PCD_FPATH << std::endl;
+    }
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+    if(re_sample){
+        if(!loadFile){
+            PCL_ERROR("ressampling but not file given.\n");
+            return -1;
+        }
+        //compute new point cloud after sampling ...
+        for(pcl::PointXYZ point : loaded_cloud->points){
+            //accept with random proba
+            if(std::rand()%100 < min_dist_sample*100) sampled_loaded_cloud_ptr->points.push_back(point);
+        }
+        loaded_cloud->clear();
     }
     
 
@@ -384,7 +412,8 @@ int main (int argc, char** argv){
         viewer = interactionCustomizationVis();
     }
     else if (loadFile){
-        viewer = simpleVis(loaded_cloud);
+        if(!re_sample) viewer = simpleVis(loaded_cloud);
+        else viewer = simpleVis(sampled_loaded_cloud_ptr);
     }
 
     //--------------------

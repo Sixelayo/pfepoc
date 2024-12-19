@@ -1,6 +1,6 @@
 made on windows, for VSCode
 
-
+Expected time to set up : probably 2 hours
 
 # get library
 
@@ -8,6 +8,8 @@ follow this tutorial :
 
 > **NOTE** read the note about commands **BEFORE** running said command (that is to say don't forget to include visualisation module)
 > https://pointclouds.org/documentation/tutorials/pcl_vcpkg_windows.html
+
+Installing pcl and all its dependency with vcpk may take an hour or so
 
 Also you should probably add cmake to your path if not already done.
 vcpkg will normaly download a suitable version at `O:\vcpkg\downloads\tools\cmake-3.30.1-windows\cmake-3.30.1-windows-i386\bin`
