@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 
 //#define PCD_FPATH "O:\\pfe\\example_pcd\\data-master\\terrain\\CSite2_orig-utm.pcd"
 std::string PCD_FPATH;
-float min_dist_sample;
+float sample_arg; //either a proba or a min dist
 
 
 
@@ -33,7 +33,7 @@ void printUsage (const char* progName){
                 << "-a           Shapes visualisation example\n"
                 << "-v           Viewports example\n"
                 << "-i           Interaction Customization example\n"
-                << "-l           load from a pcd file\n"
+                << "-l <path>    load from a pcd file\n"
                 << "-d           if -l, ressample min dist\n"
                 << "\n\n";
 }
@@ -228,6 +228,16 @@ pcl::visualization::PCLVisualizer::Ptr interactionCustomizationVis ()
 }
 
 
+void sample_random(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr){
+    for(pcl::PointXYZ point : loaded_cloud->points){
+        //accept with random proba
+        if(std::rand()%100 < sample_arg*100) sampled_loaded_cloud_ptr->points.push_back(point);
+    }
+}
+
+void sample_mindist(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr){
+}
+
 // --------------
 // -----Main-----
 // --------------
@@ -243,59 +253,61 @@ int main (int argc, char** argv){
     bool simple(false), rgb(false), custom_c(false), normals(false),
         shapes(false), viewports(false), interaction_customization(false),
         loadFile(false), re_sample(false);
-    if (pcl::console::find_argument (argc, argv, "-s") >= 0){
-        simple = true;
-        std::cout << "Simple visualisation example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-c") >= 0){
-        custom_c = true;
-        std::cout << "Custom colour visualisation example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-r") >= 0){
-        rgb = true;
-        std::cout << "RGB colour visualisation example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-n") >= 0){
-        normals = true;
-        std::cout << "Normals visualisation example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-a") >= 0){
-        shapes = true;
-        std::cout << "Shapes visualisation example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-v") >= 0){
-        viewports = true;
-        std::cout << "Viewports example\n";
-    }
-    else if (pcl::console::find_argument (argc, argv, "-i") >= 0){
-        interaction_customization = true;
-        std::cout << "Interaction Customization example\n";
-    }
-    else if (pcl::console::find_argument(argc, argv, "-l") >= 0) {
-        loadFile = true;
-        int index = pcl::console::find_argument(argc, argv, "-l") + 1;
-        if (index < argc) {
-            PCD_FPATH = argv[index];
-            std::cout << "File to load: " << PCD_FPATH << "\n";
-            if (pcl::console::find_argument(argc, argv, "-d") >= 0) {
-                re_sample = true;
-                int index = pcl::console::find_argument(argc, argv, "-d") + 1;
-                if (index < argc) {
-                    min_dist_sample = atof(argv[index]);
-                    std::cout << "ressampling min dist btw neighbor: " << min_dist_sample << "\n";
-                } else {
-                    std::cerr << "Error: No float given provided after -d.\n";
-                    exit(-1);
-                }
-            }
-        } else {
-            std::cerr << "Error: No file path provided after -l.\n";
-            exit(-1);
+    {//parsing ...
+        if (pcl::console::find_argument (argc, argv, "-s") >= 0){
+            simple = true;
+            std::cout << "Simple visualisation example\n";
         }
-    }
-    else{
-        printUsage (argv[0]);
-        return 0;
+        else if (pcl::console::find_argument (argc, argv, "-c") >= 0){
+            custom_c = true;
+            std::cout << "Custom colour visualisation example\n";
+        }
+        else if (pcl::console::find_argument (argc, argv, "-r") >= 0){
+            rgb = true;
+            std::cout << "RGB colour visualisation example\n";
+        }
+        else if (pcl::console::find_argument (argc, argv, "-n") >= 0){
+            normals = true;
+            std::cout << "Normals visualisation example\n";
+        }
+        else if (pcl::console::find_argument (argc, argv, "-a") >= 0){
+            shapes = true;
+            std::cout << "Shapes visualisation example\n";
+        }
+        else if (pcl::console::find_argument (argc, argv, "-v") >= 0){
+            viewports = true;
+            std::cout << "Viewports example\n";
+        }
+        else if (pcl::console::find_argument (argc, argv, "-i") >= 0){
+            interaction_customization = true;
+            std::cout << "Interaction Customization example\n";
+        }
+        else if (pcl::console::find_argument(argc, argv, "-l") >= 0) {
+            loadFile = true;
+            int index = pcl::console::find_argument(argc, argv, "-l") + 1;
+            if (index < argc) {
+                PCD_FPATH = argv[index];
+                std::cout << "File to load: " << PCD_FPATH << "\n";
+                if (pcl::console::find_argument(argc, argv, "-d") >= 0) {
+                    re_sample = true;
+                    int index = pcl::console::find_argument(argc, argv, "-d") + 1;
+                    if (index < argc) {
+                        sample_arg = atof(argv[index]);
+                        std::cout << "ressampling arg : " << sample_arg << "\n";
+                    } else {
+                        std::cerr << "Error: No float given provided after -d.\n";
+                        exit(-1);
+                    }
+                }
+            } else {
+                std::cerr << "Error: No file path provided after -l.\n";
+                exit(-1);
+            }
+        }
+        else{
+            printUsage (argv[0]);
+            return 0;
+        }
     }
 
     // ------------------------------------
@@ -363,10 +375,16 @@ int main (int argc, char** argv){
             return -1;
         }
         //compute new point cloud after sampling ...
-        for(pcl::PointXYZ point : loaded_cloud->points){
-            //accept with random proba
-            if(std::rand()%100 < min_dist_sample*100) sampled_loaded_cloud_ptr->points.push_back(point);
-        }
+        auto start = std::chrono::high_resolution_clock::now();
+        sample_random(loaded_cloud, sampled_loaded_cloud_ptr);
+        // for(pcl::PointXYZ point : loaded_cloud->points){
+        //     //accept with random proba
+        //     if(std::rand()%100 < min_dist_sample*100) sampled_loaded_cloud_ptr->points.push_back(point);
+        // }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end - start;
+        std::cout << "Execution time: " << elapsed.count() << " ms" << std::endl;
+        std::cout << "Points in sampled cloud :\t" << sampled_loaded_cloud_ptr->size() << std::endl;
         loaded_cloud->clear();
     }
     
@@ -390,30 +408,32 @@ int main (int argc, char** argv){
     ne.compute (*cloud_normals2);
 
     pcl::visualization::PCLVisualizer::Ptr viewer;
-    if (simple){
-        viewer = simpleVis(basic_cloud_ptr);
-    }
-    else if (rgb){
-        viewer = rgbVis(point_cloud_ptr);
-    }
-    else if (custom_c){
-        viewer = customColourVis(basic_cloud_ptr);
-    }
-    else if (normals){
-        viewer = normalsVis(point_cloud_ptr, cloud_normals2);
-    }
-    else if (shapes){
-        viewer = shapesVis(point_cloud_ptr);
-    }
-    else if (viewports){
-        viewer = viewportsVis(point_cloud_ptr, cloud_normals1, cloud_normals2);
-    }
-    else if (interaction_customization){
-        viewer = interactionCustomizationVis();
-    }
-    else if (loadFile){
-        if(!re_sample) viewer = simpleVis(loaded_cloud);
-        else viewer = simpleVis(sampled_loaded_cloud_ptr);
+    {//depending on args
+        if (simple){
+            viewer = simpleVis(basic_cloud_ptr);
+        }
+        else if (rgb){
+            viewer = rgbVis(point_cloud_ptr);
+        }
+        else if (custom_c){
+            viewer = customColourVis(basic_cloud_ptr);
+        }
+        else if (normals){
+            viewer = normalsVis(point_cloud_ptr, cloud_normals2);
+        }
+        else if (shapes){
+            viewer = shapesVis(point_cloud_ptr);
+        }
+        else if (viewports){
+            viewer = viewportsVis(point_cloud_ptr, cloud_normals1, cloud_normals2);
+        }
+        else if (interaction_customization){
+            viewer = interactionCustomizationVis();
+        }
+        else if (loadFile){
+            if(!re_sample) viewer = simpleVis(loaded_cloud);
+            else viewer = simpleVis(sampled_loaded_cloud_ptr);
+        }
     }
 
     //--------------------
