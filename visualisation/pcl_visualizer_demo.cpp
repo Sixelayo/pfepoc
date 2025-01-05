@@ -9,6 +9,8 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/console/parse.h>
 
+#include <pcl/octree/octree_search.h>
+
 using namespace std::chrono_literals;
 
 //#define PCD_FPATH "O:\\pfe\\example_pcd\\data-master\\terrain\\CSite2_orig-utm.pcd"
@@ -127,7 +129,8 @@ void mouseEventOccurred (const pcl::visualization::MouseEvent &event,
 void sample_random(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr, float proba){
     for(pcl::PointXYZ point : loaded_cloud->points){
         //accept with random proba
-        if(std::rand()%1000000 < proba*1000000) sampled_loaded_cloud_ptr->points.push_back(point);
+        float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        if(random_value < proba) sampled_loaded_cloud_ptr->points.push_back(point);
     }
 }
 
@@ -144,6 +147,8 @@ float dist_pointToCloud(pcl::PointXYZ point, pcl::PointCloud<pcl::PointXYZ>::Ptr
     return min_dist;
 }
 
+
+
 //without accelerationd data structure
 void sample_mindist(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr, float threshold){
     int cnt =0; //todo torm
@@ -157,16 +162,44 @@ void sample_mindist(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::Point
     }
 }
 
+
+
+bool dist_pointToCloudOCTREE(pcl::PointXYZ point, pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree, float mdist) {
+    std::vector<int> pointIdxRadiusSearch;
+    std::vector<float> pointRadiusSquaredDistance;
+
+    return !(octree.radiusSearch(point, mdist, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0);
+}
+
 //with acceleration
-//...
+void sample_mindistOCTREE(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr, float threshold){
+    int cnt =0; //todo torm
+
+    pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(2*threshold); //threshold times 2 because why not ?
+    octree.setInputCloud(sampled_loaded_cloud_ptr);
+
+    for(pcl::PointXYZ point : loaded_cloud->points){
+        cnt++; //todo torm
+        if(cnt%10000==0) std::cout << cnt << " ";
+        // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+        if (dist_pointToCloudOCTREE(point, octree, threshold)) {
+            //sampled_loaded_cloud_ptr->points.push_back(point);
+            octree.addPointToCloud(point, sampled_loaded_cloud_ptr);
+        }
+    }
+}
 
 // --------------
 // -----Main-----
 // --------------
 int main (int argc, char** argv){
-  // --------------------------------------
-  // -----Parse Command Line Arguments-----
-  // --------------------------------------
+    //initialisation (seed ...)
+    srand(time(NULL));
+
+
+    // --------------------------------------
+    // -----Parse Command Line Arguments-----
+    // --------------------------------------
     if (pcl::console::find_argument (argc, argv, "-h") >= 0)
     {
         printUsage (argv[0]);
@@ -293,6 +326,7 @@ int main (int argc, char** argv){
     auto start = std::chrono::high_resolution_clock::now();
     if(sample_rand) sample_random(loaded_cloud, sampled_loaded_cloud_ptr, sample_arg);
     if(sample_mdna) sample_mindist(loaded_cloud, sampled_loaded_cloud_ptr, sample_arg);
+    if(sample_mdwa) sample_mindistOCTREE(loaded_cloud, sampled_loaded_cloud_ptr, sample_arg);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end - start;
     std::cout << "Execution time: " << elapsed.count() << " ms" << std::endl;
