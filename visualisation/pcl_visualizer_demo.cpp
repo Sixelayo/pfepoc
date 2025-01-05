@@ -27,14 +27,10 @@ void printUsage (const char* progName){
                 << "-------------------------------------------\n"
                 << "-h           this help\n"
                 << "-s           Simple visualisation example\n"
-                << "-r           RGB colour visualisation example\n"
-                << "-c           Custom colour visualisation example\n"
-                << "-n           Normals visualisation example\n"
-                << "-a           Shapes visualisation example\n"
-                << "-v           Viewports example\n"
-                << "-i           Interaction Customization example\n"
                 << "-l <path>    load from a pcd file\n"
-                << "-d           if -l, ressample min dist\n"
+                << "-r <float>      keep random proportion btw 0-1\n"
+                << "-mdna <float>   minimum distance (no acceleration)\n"
+                << "-mdwa <float>   minimum distance with acceleration\n"
                 << "\n\n";
 }
 
@@ -48,103 +44,14 @@ pcl::visualization::PCLVisualizer::Ptr simpleVis (pcl::PointCloud<pcl::PointXYZ>
   viewer->setBackgroundColor (0.2, 0.4, 0.2);
   viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-  viewer->addCoordinateSystem (1.0);
+  viewer->addCoordinateSystem (0.2);
   viewer->initCameraParameters ();
   return (viewer);
 }
 
 
-pcl::visualization::PCLVisualizer::Ptr rgbVis (pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud)
-{
-  // --------------------------------------------
-  // -----Open 3D viewer and add point cloud-----
-  // --------------------------------------------
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-  viewer->addCoordinateSystem (1.0);
-  viewer->initCameraParameters ();
-  return (viewer);
-}
 
 
-pcl::visualization::PCLVisualizer::Ptr customColourVis (pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud)
-{
-  // --------------------------------------------
-  // -----Open 3D viewer and add point cloud-----
-  // --------------------------------------------
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> single_color(cloud, 0, 255, 0);
-  viewer->addPointCloud<pcl::PointXYZ> (cloud, single_color, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-  viewer->addCoordinateSystem (1.0);
-  viewer->initCameraParameters ();
-  return (viewer);
-}
-
-
-pcl::visualization::PCLVisualizer::Ptr normalsVis (
-    pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud, pcl::PointCloud<pcl::Normal>::ConstPtr normals)
-{
-  // --------------------------------------------------------
-  // -----Open 3D viewer and add point cloud and normals-----
-  // --------------------------------------------------------
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-  viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud, normals, 10, 0.05, "normals");
-  viewer->addCoordinateSystem (1.0);
-  viewer->initCameraParameters ();
-  return (viewer);
-}
-
-
-pcl::visualization::PCLVisualizer::Ptr shapesVis (pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud)
-{
-  // --------------------------------------------
-  // -----Open 3D viewer and add point cloud-----
-  // --------------------------------------------
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-  viewer->addCoordinateSystem (1.0);
-  viewer->initCameraParameters ();
-
-  //------------------------------------
-  //-----Add shapes at cloud points-----
-  //------------------------------------
-  viewer->addLine<pcl::PointXYZRGB> ((*cloud)[0],
-                                     (*cloud)[cloud->size() - 1], "line");
-  viewer->addSphere ((*cloud)[0], 0.2, 0.5, 0.5, 0.0, "sphere");
-
-  //---------------------------------------
-  //-----Add shapes at other locations-----
-  //---------------------------------------
-  pcl::ModelCoefficients coeffs;
-  coeffs.values.push_back (0.0);
-  coeffs.values.push_back (0.0);
-  coeffs.values.push_back (1.0);
-  coeffs.values.push_back (0.0);
-  viewer->addPlane (coeffs, "plane");
-  coeffs.values.clear ();
-  coeffs.values.push_back (0.3);
-  coeffs.values.push_back (0.3);
-  coeffs.values.push_back (0.0);
-  coeffs.values.push_back (0.0);
-  coeffs.values.push_back (1.0);
-  coeffs.values.push_back (0.0);
-  coeffs.values.push_back (5.0);
-  viewer->addCone (coeffs, "cone");
-
-  return (viewer);
-}
 
 
 pcl::visualization::PCLVisualizer::Ptr viewportsVis (
@@ -215,28 +122,43 @@ void mouseEventOccurred (const pcl::visualization::MouseEvent &event,
   }
 }
 
-pcl::visualization::PCLVisualizer::Ptr interactionCustomizationVis ()
-{
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  viewer->addCoordinateSystem (1.0);
-
-  viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)viewer.get ());
-  viewer->registerMouseCallback (mouseEventOccurred, (void*)viewer.get ());
-
-  return (viewer);
-}
 
 
-void sample_random(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr){
+void sample_random(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr, float proba){
     for(pcl::PointXYZ point : loaded_cloud->points){
         //accept with random proba
-        if(std::rand()%100 < sample_arg*100) sampled_loaded_cloud_ptr->points.push_back(point);
+        if(std::rand()%1000000 < proba*1000000) sampled_loaded_cloud_ptr->points.push_back(point);
     }
 }
 
-void sample_mindist(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr){
+float dist_pointToCloud(pcl::PointXYZ point, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+    float min_dist = 999999; //start with absurdly hight value
+    for(pcl::PointXYZ other_point : cloud->points){
+         float dist = std::sqrt(std::pow(point.x - other_point.x, 2) +
+                               std::pow(point.y - other_point.y, 2) +
+                               std::pow(point.z - other_point.z, 2));
+        if (dist < min_dist) {
+            min_dist = dist;
+        }
+    }
+    return min_dist;
 }
+
+//without accelerationd data structure
+void sample_mindist(pcl::PointCloud<pcl::PointXYZ>::Ptr loaded_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr, float threshold){
+    int cnt =0; //todo torm
+    for(pcl::PointXYZ point : loaded_cloud->points){
+        cnt++; //todo torm
+        if(cnt%10000==0) std::cout << cnt << " ";
+        // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+        if (dist_pointToCloud(point, sampled_loaded_cloud_ptr) >= threshold) {
+            sampled_loaded_cloud_ptr->points.push_back(point);
+        }
+    }
+}
+
+//with acceleration
+//...
 
 // --------------
 // -----Main-----
@@ -250,37 +172,12 @@ int main (int argc, char** argv){
         printUsage (argv[0]);
         return 0;
     }
-    bool simple(false), rgb(false), custom_c(false), normals(false),
-        shapes(false), viewports(false), interaction_customization(false),
-        loadFile(false), re_sample(false);
+    bool simple(false), viewports(false), interaction_customization(false),
+        loadFile(false), re_sample(false), sample_rand(false), sample_mdna(false), sample_mdwa(false);
     {//parsing ...
         if (pcl::console::find_argument (argc, argv, "-s") >= 0){
             simple = true;
             std::cout << "Simple visualisation example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-c") >= 0){
-            custom_c = true;
-            std::cout << "Custom colour visualisation example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-r") >= 0){
-            rgb = true;
-            std::cout << "RGB colour visualisation example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-n") >= 0){
-            normals = true;
-            std::cout << "Normals visualisation example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-a") >= 0){
-            shapes = true;
-            std::cout << "Shapes visualisation example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-v") >= 0){
-            viewports = true;
-            std::cout << "Viewports example\n";
-        }
-        else if (pcl::console::find_argument (argc, argv, "-i") >= 0){
-            interaction_customization = true;
-            std::cout << "Interaction Customization example\n";
         }
         else if (pcl::console::find_argument(argc, argv, "-l") >= 0) {
             loadFile = true;
@@ -288,14 +185,37 @@ int main (int argc, char** argv){
             if (index < argc) {
                 PCD_FPATH = argv[index];
                 std::cout << "File to load: " << PCD_FPATH << "\n";
-                if (pcl::console::find_argument(argc, argv, "-d") >= 0) {
-                    re_sample = true;
-                    int index = pcl::console::find_argument(argc, argv, "-d") + 1;
+                //precise sampling method, -r / -mdna / -mdwa
+                if (pcl::console::find_argument(argc, argv, "-r") >= 0) {
+                    sample_rand = true; re_sample = true;
+                    int index = pcl::console::find_argument(argc, argv, "-r") + 1;
                     if (index < argc) {
                         sample_arg = atof(argv[index]);
-                        std::cout << "ressampling arg : " << sample_arg << "\n";
+                        std::cout << "proportion keep : " << sample_arg << "\n";
                     } else {
                         std::cerr << "Error: No float given provided after -d.\n";
+                        exit(-1);
+                    }
+                }
+                else if (pcl::console::find_argument(argc, argv, "-mdna") >= 0) {
+                    sample_mdna = true; re_sample = true;
+                    int index = pcl::console::find_argument(argc, argv, "-mdna") + 1;
+                    if (index < argc) {
+                        sample_arg = atof(argv[index]);
+                        std::cout << "minimum distance : " << sample_arg << "\n";
+                    } else {
+                        std::cerr << "Error: No float given provided after -mdna.\n";
+                        exit(-1);
+                    }
+                }
+                else if (pcl::console::find_argument(argc, argv, "-mdwa") >= 0) {
+                    sample_mdwa = true; re_sample = true;
+                    int index = pcl::console::find_argument(argc, argv, "-mdwa") + 1;
+                    if (index < argc) {
+                        sample_arg = atof(argv[index]);
+                        std::cout << "minimum distance : " << sample_arg << "\n";
+                    } else {
+                        std::cerr << "Error: No float given provided after -mdwa.\n";
                         exit(-1);
                     }
                 }
@@ -369,24 +289,16 @@ int main (int argc, char** argv){
     }
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr sampled_loaded_cloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
-    if(re_sample){
-        if(!loadFile){
-            PCL_ERROR("ressampling but not file given.\n");
-            return -1;
-        }
-        //compute new point cloud after sampling ...
-        auto start = std::chrono::high_resolution_clock::now();
-        sample_random(loaded_cloud, sampled_loaded_cloud_ptr);
-        // for(pcl::PointXYZ point : loaded_cloud->points){
-        //     //accept with random proba
-        //     if(std::rand()%100 < min_dist_sample*100) sampled_loaded_cloud_ptr->points.push_back(point);
-        // }
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> elapsed = end - start;
-        std::cout << "Execution time: " << elapsed.count() << " ms" << std::endl;
-        std::cout << "Points in sampled cloud :\t" << sampled_loaded_cloud_ptr->size() << std::endl;
-        loaded_cloud->clear();
-    }
+    //compute new point cloud after sampling ...
+    auto start = std::chrono::high_resolution_clock::now();
+    if(sample_rand) sample_random(loaded_cloud, sampled_loaded_cloud_ptr, sample_arg);
+    if(sample_mdna) sample_mindist(loaded_cloud, sampled_loaded_cloud_ptr, sample_arg);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    std::cout << "Execution time: " << elapsed.count() << " ms" << std::endl;
+    std::cout << "Points in sampled cloud :\t" << sampled_loaded_cloud_ptr->size() << std::endl;
+    loaded_cloud->clear();
+    
     
 
     // ----------------------------------------------------------------
@@ -412,23 +324,8 @@ int main (int argc, char** argv){
         if (simple){
             viewer = simpleVis(basic_cloud_ptr);
         }
-        else if (rgb){
-            viewer = rgbVis(point_cloud_ptr);
-        }
-        else if (custom_c){
-            viewer = customColourVis(basic_cloud_ptr);
-        }
-        else if (normals){
-            viewer = normalsVis(point_cloud_ptr, cloud_normals2);
-        }
-        else if (shapes){
-            viewer = shapesVis(point_cloud_ptr);
-        }
         else if (viewports){
             viewer = viewportsVis(point_cloud_ptr, cloud_normals1, cloud_normals2);
-        }
-        else if (interaction_customization){
-            viewer = interactionCustomizationVis();
         }
         else if (loadFile){
             if(!re_sample) viewer = simpleVis(loaded_cloud);

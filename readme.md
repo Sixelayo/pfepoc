@@ -49,6 +49,8 @@ https://pcl.readthedocs.io/projects/tutorials/en/master/pcl_visualizer.html#pcl-
 
 You can find example pcd files in pcl git repo `\pcl-master\test`
 
+> The fivepeoiple.pcd seem irrelevant ? I think that it has many points with the exact same coordinate (wtf ?) so I'll use cturtle for testing. Also for reasons I cannot explain, cturtle is WAAAAY faster to process with mdna than five_people which is sus to say the least
+
 # other
 
 
