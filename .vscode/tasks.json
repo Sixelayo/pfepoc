@@ -31,7 +31,7 @@
                 "kind": "build",
                 "isDefault": false
             },
-            "dependsOn": "CMake Configure",
+            //"dependsOn": "CMake Configure",
             "problemMatcher": [],
             "detail": "Builds the project in Release mode."
         }

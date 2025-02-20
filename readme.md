@@ -37,7 +37,7 @@ Or manually run commands :
 >cmake --build . --config Release
 
 
-Program will be compiled in `/Release/` Folder
+Program will be compiled in `visualisation/build/Release/` Folder
 Try `.\Release\pcl_visualizer_demo.exe -l O:\pfe\pfepoc\example_pcd\five_people.pcd`
 
 
@@ -56,3 +56,7 @@ You can find example pcd files in pcl git repo `\pcl-master\test`
 
 different compiler should propably use ?
 cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=O:/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+# try history
+
+`.\Release\pcl_visualizer_demo.exe -l O:\pfe\pfepoc\example_pcd\foo1.pcd -mdwa 0.1` ran in 3s
