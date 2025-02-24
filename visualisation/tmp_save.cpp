@@ -155,7 +155,7 @@ namespace smp{
         }
 
         timer::endLOG();
-        DEBUG(" Finished sampling, " << new_cloud->size() << " points kept\n")
+        DEBUG(" Finished sampling, " << new_cloud->size() << " points kept")
     }
     void sample_min_dist(pcXYZ::Ptr src_cloud, pcXYZ new_cloud, const Arg_md args){
         
@@ -271,9 +271,6 @@ void main_sample(int argc, char** argv){
     timer::endLOG();
     DEBUG(" Loaded " << src_cloud_ptr->width * src_cloud_ptr->height << " data points\n");
 
-
-    
-
     //construct out_cloud_ptr
     switch (sampling_method){
         case smp::RANDOM: smp::sample_random(src_cloud_ptr, new_cloud_ptr, arg_rand); break;
@@ -282,25 +279,16 @@ void main_sample(int argc, char** argv){
         case smp::MIN_DIST_OCTREE:
             break;
     }
-    //clear source in memoyr bc not needed anymore TODO maybe ?
-    //src_cloud_ptr->clear(); 
+    //clear source in memoyr bc not needed anymore
+    src_cloud_ptr->clear();
 
-    ///DEBUG
-    DEBUG("here1");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooASCII.pcd", *src_cloud_ptr, false);
-    DEBUG("here2");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooBINARY.pcd", *src_cloud_ptr, true);
-    DEBUG("here3");
-    
     //save output
     timer::start();
-    DEBUG("here4");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooFILTEREDasc.pcd", *new_cloud_ptr, false);
-    DEBUG("here5");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooFILTEREDbin.pcd", *new_cloud_ptr, true);
-    DEBUG("here6");
+    DEBUG("todo here before save\n");
+    pcl::io::savePCDFile(PATH_OUT, *new_cloud_ptr, false);
     timer::endLOG();
     DEBUG(" saved file at " << PATH_OUT << "\n");
+    //pcl::io::savePCDFileBinary("output_binary.pcd", new_cloud_ptr); //TODO ADD OPTION TO SAVE AS BINARY
 
     if(preview){
         pcl::visualization::PCLVisualizer::Ptr viewer;
