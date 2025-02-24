@@ -65,7 +65,7 @@ void printUsage (){
                 << "\t\t\tmdwo <float: dist,float: octree_dist>             Minimum distance using octree\n"
                 << "\t\t-file <path>               output save path\n"
                 << "\t\t-o <path>               output save path\n"
-                << "\t\t- <path>               output save path\n"
+                << "\t\t-binary                 save output as binary (default : ASCII)\n"
                 << "\t\t-prev                   if present, load a viewer with sampled cloud (no preview if asbent)\n"
                 << "\t-compare\n"
                 << "\t\t-oc1 <float>            octree param\n"
@@ -151,7 +151,7 @@ namespace smp{
         float proba = args.proportion;
         for(pcl::PointXYZ point : src_cloud->points){
             float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-            if(random_value < proba) new_cloud->points.push_back(point);
+            if(random_value < proba) new_cloud->push_back(point);
         }
 
         timer::endLOG();
@@ -222,6 +222,7 @@ void main_sample(int argc, char** argv){
     smp::Arg_md arg_md;
     smp::Arg_mdwo arg_mdwo;
     bool preview = false;
+    bool binary = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -233,7 +234,11 @@ void main_sample(int argc, char** argv){
             PATH_OUT = argv[i+1];
         }else if (arg == "-prev") {
             preview = true;
-        }else if (arg == "-mode") {
+        }else if (arg == "-binary") {
+            binary = true;
+        }
+
+        else if (arg == "-mode") {
             if(i+1 == argc) exit(-1);
             std::string arg2 = argv[i+1];
             if(arg2 == "rand"){
@@ -283,22 +288,13 @@ void main_sample(int argc, char** argv){
             break;
     }
     //clear source in memoyr bc not needed anymore TODO maybe ?
-    //src_cloud_ptr->clear(); 
+    src_cloud_ptr->clear(); 
 
-    ///DEBUG
-    DEBUG("here1");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooASCII.pcd", *src_cloud_ptr, false);
-    DEBUG("here2");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooBINARY.pcd", *src_cloud_ptr, true);
-    DEBUG("here3");
+
     
     //save output
     timer::start();
-    DEBUG("here4");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooFILTEREDasc.pcd", *new_cloud_ptr, false);
-    DEBUG("here5");
-    pcl::io::savePCDFile("O:\\pfe\\pfepoc\\example_pcd\\fooFILTEREDbin.pcd", *new_cloud_ptr, true);
-    DEBUG("here6");
+    pcl::io::savePCDFile(PATH_OUT, *new_cloud_ptr, binary);
     timer::endLOG();
     DEBUG(" saved file at " << PATH_OUT << "\n");
 

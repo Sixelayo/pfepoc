@@ -50,8 +50,8 @@ Viewing :
 
 Ressampling :
 ```cmd
-.\Release\pcl_visualizer_demo.exe -foo
-.\Release\pcl_visualizer_demo.exe -foo
+.\Release\pcl_visualizer_demo.exe -sample -mode rand 0.5 -file ..\..\example_pcd\foo1.pcd -o ..\..\example_pcd\fooBin.pcd  
+.\Release\pcl_visualizer_demo.exe -view -file ..\..\example_pcd\fooBin.pcd
 ```
 
 Comparing :
