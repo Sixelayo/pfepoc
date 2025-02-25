@@ -72,10 +72,9 @@ void printUsage (){
                 << "\t\t-file_comp <path>       compared point cloud path\n"
                 << "\t\t-octree_res <float>     octree resolution\n"
                 << "\t\t-threshold <float>      minimum distance requiered for point to be considered different\n"
-                << "\t\t[-common]               include point common to 2 point cloud in output\n"
                 << "\t\t[-only_src]             include points present only in source point cloud int output\n"
                 << "\t\t[-only_comp]            include points present only in compared point cloud in output\n"
-                << "\t\t[-all]                  equivalent to -common -only_src -only_comp\n"
+                << "\t\t[-all]                  equivalent to -only_src -only_comp\n"
                 << "\t\t[-save <path>]          output save path\n"
                 << "\t\t[-binary]               save output as binary (default : ASCII)\n"
                 << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
@@ -266,24 +265,35 @@ namespace smp{
 } //end namespace smp
 
 namespace cmp{
-    void compare(float threshold, pcXYZ::Ptr cloud1, Mytree& octree1, pcXYZ::Ptr cloud2, Mytree& octree2, pcXYZ::Ptr out, bool common, bool only_src, bool only_comp){
+    void compare(float threshold, pcXYZ::Ptr cloud1, Mytree& octree1, pcXYZ::Ptr cloud2, Mytree& octree2, pcXYZ::Ptr out, bool only_src, bool only_comp){
         if(only_src){
-            
+            DEBUG("comparing cloud 1 points to octree 2\n");
+            timer::start();
+            for(pcl::PointXYZ point : cloud1->points){
+                // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+                if (smp::accept_pointToCloudOCTREE(point, octree2, threshold)) {
+                    out->push_back(point); //red (only in cloud 1)
+                }
+                //else out->push_back(point); green = common
+            }
+            timer::endLOG();
+            DEBUG("points only in source : " << out->size()<<"\n");
         }
         
         if(only_comp){
-
-        }
-        DEBUG("comparing both cloud\n");
-        timer::start();
-        for(pcl::PointXYZ point : cloud1->points){
-            // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
-            if (smp::accept_pointToCloudOCTREE(point, octree2, threshold)) {
-                out->push_back(point);
+            DEBUG("comparing cloud 2 points to octree 1\n");
+            timer::start();
+            for(pcl::PointXYZ point : cloud2->points){
+                // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+                if (smp::accept_pointToCloudOCTREE(point, octree1, threshold)) {
+                    out->push_back(point); //blue (only in cloud 2 )
+                }
+                //else : out->push_back(point); green = common
             }
+            timer::endLOG();
+            DEBUG("points only in source : " << out->size()<<"\n");
         }
-        timer::endLOG();
-        DEBUG("points int final cloud : " << out->size()<<"\n");
+        
 
     }
 } //end namespace cmp
@@ -421,7 +431,6 @@ void main_compare(int argc, char** argv){
     float threshold; //related to sample args. Can make result vari
 
     //output filter
-    bool common = false;
     bool only_src = false;
     bool only_comp = false;
 
@@ -440,14 +449,11 @@ void main_compare(int argc, char** argv){
         }else if (arg == "-threshold") {
             if(i+1 == argc) exit(-1);
             threshold = atof(argv[i+1]);
-        }else if (arg == "-common") {
-            common = true;
         }else if (arg == "-only_src") {
             only_src = true;
         }else if (arg == "-only_comp") {
             only_comp = true;
         }else if (arg == "-all") {
-            common = true;
             only_src = true;
             only_comp = true;
         }else if (arg == "-save") {
@@ -474,7 +480,7 @@ void main_compare(int argc, char** argv){
     Mytree comp_octree = util::loadOctree(comp_cloud_ptr, resolution);
 
     //algo de comparaison
-    cmp::compare(threshold, src_cloud_ptr, src_octree, comp_cloud_ptr, comp_octree, new_cloud_ptr, common, only_src, only_comp);
+    cmp::compare(threshold, src_cloud_ptr, src_octree, comp_cloud_ptr, comp_octree, new_cloud_ptr, only_src, only_comp);
 
     //save output TODO RGB
     if(!PATH_OUT.empty())
