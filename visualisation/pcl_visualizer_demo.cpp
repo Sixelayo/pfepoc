@@ -64,7 +64,7 @@ void printUsage (){
                 << "\t\t\tmd <float: dist>                                  Minimum distance, no acceleration\n"
                 << "\t\t\tmdwo <float: dist,float: octree_dist>             Minimum distance using octree\n"
                 << "\t\t-file <path>               output save path\n"
-                << "\t\t-o <path>               output save path\n"
+                << "\t\t[-save <path>]               output save path\n"
                 << "\t\t[-binary]               save output as binary (default : ASCII)\n"
                 << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
                 << "\t-compare\n"
@@ -174,6 +174,8 @@ namespace smp{
     void sample_random(pcXYZ::Ptr src_cloud, pcXYZ::Ptr new_cloud, const Arg_rand& args){
         timer::start();
         float proba = args.proportion;
+
+        DEBUG("Starting random sampling. Keeping " << proba*100 << "% of points\n");
         for(pcl::PointXYZ point : src_cloud->points){
             float random_value = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
             if(random_value < proba) new_cloud->push_back(point);
@@ -182,11 +184,63 @@ namespace smp{
         timer::endLOG();
         DEBUG(" Finished sampling, " << new_cloud->size() << " points kept\n")
     }
-    void sample_min_dist(pcXYZ::Ptr src_cloud, pcXYZ new_cloud, const Arg_md args){
-        
+
+    //returns distance of a point to a cloud
+    float dist_pointToCloud(const pcl::PointXYZ& point, pcXYZ::Ptr cloud){
+        float min_dist = 999999; //start with absurdly hight value
+        for(pcl::PointXYZ other_point : cloud->points){
+             float dist = std::sqrt(std::pow(point.x - other_point.x, 2) +
+                                   std::pow(point.y - other_point.y, 2) +
+                                   std::pow(point.z - other_point.z, 2));
+            if (dist < min_dist) min_dist = dist;
+        }
+        return min_dist;
     }
-    void sample_mind_dist_octree(pcXYZ::Ptr src_cloud, pcXYZ new_cloud, const Arg_mdwo args){
-        
+
+    void sample_min_dist(pcXYZ::Ptr src_cloud, pcXYZ::Ptr new_cloud, const Arg_md args){
+        float threshold = args.min_dist;
+
+        DEBUG("Starting minimum distance sampling. Points are at least " << threshold << "AU appart\n"); //note that AU obviously refers to arbitrary unit and not Astronomical Unit
+        timer::start();
+        for(pcl::PointXYZ point : src_cloud->points){
+            // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+            if (dist_pointToCloud(point, new_cloud) >= threshold) {
+                new_cloud->push_back(point);
+            }
+        }
+        timer::endLOG();
+        DEBUG(" Finished sampling, " << new_cloud->size() << " points kept\n")
+    }
+
+    //true if there's no point within mdsit of point in octree
+    bool dist_pointToCloudOCTREE(const pcl::PointXYZ& point, const Mytree& octree, float mdist) {
+        //TODO maybe an optimisation : do not create vector on stack each time ? pass as ref in argument and clear them at the end 
+        std::vector<int> pointIdxRadiusSearch;
+        std::vector<float> pointRadiusSquaredDistance;
+        return octree.radiusSearch(point, mdist, pointIdxRadiusSearch, pointRadiusSquaredDistance) == 0;
+    }
+
+    void sample_mind_dist_octree(pcXYZ::Ptr src_cloud, pcXYZ::Ptr new_cloud, const Arg_mdwo args){
+        float threshold = args.min_dist;
+        float octree_dist = args.octree_dist;
+
+        DEBUG("Starting minimum distance sampling with octree. \n\tPoints are at least " << threshold << "AU appart\n\tOctree distance : "<< octree_dist <<" UA\n");
+        timer::start();
+
+        //step 1 create octree
+        Mytree octree(octree_dist);
+        octree.setInputCloud(new_cloud);
+
+        //step 2 loop over points
+        for(pcl::PointXYZ point : src_cloud->points){
+            // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+            if (dist_pointToCloudOCTREE(point, octree, threshold)) {
+                octree.addPointToCloud(point, new_cloud);
+            }
+        }
+
+        timer::endLOG();
+        DEBUG(" Finished sampling, " << new_cloud->size() << " points kept\n")
     }
 
 }
@@ -244,7 +298,7 @@ void main_sample(int argc, char** argv){
         if (arg == "-file") {
             if(i+1 == argc) exit(-1);
             PATH_SRC = argv[i+1];
-        } else if (arg == "-o") {
+        } else if (arg == "-save") {
             if(i+1 == argc) exit(-1);
             PATH_OUT = argv[i+1];
         }else if (arg == "-prev") {
@@ -287,16 +341,15 @@ void main_sample(int argc, char** argv){
     //construct out_cloud_ptr
     switch (sampling_method){
         case smp::RANDOM: smp::sample_random(src_cloud_ptr, new_cloud_ptr, arg_rand); break;
-        case smp::MIN_DIST:
-            break;
-        case smp::MIN_DIST_OCTREE:
-            break;
+        case smp::MIN_DIST: smp::sample_min_dist(src_cloud_ptr, new_cloud_ptr, arg_md); break;
+        case smp::MIN_DIST_OCTREE: smp::sample_mind_dist_octree(src_cloud_ptr, new_cloud_ptr, arg_mdwo); break;
     }
     //clear source in memoyr bc not needed anymore
     src_cloud_ptr->clear(); 
 
     //save output
-    util::saveXYZ(PATH_OUT, new_cloud_ptr, binary);
+    if(!PATH_OUT.empty())
+        util::saveXYZ(PATH_OUT, new_cloud_ptr, binary);
 
     if(preview){
         pcl::visualization::PCLVisualizer::Ptr viewer;
@@ -315,6 +368,19 @@ void main_sample(int argc, char** argv){
 
 void main_compare(int argc, char** argv){
     DEBUG("mode : compare");
+
+    //parse arg
+
+    //load file 1
+    //load file 2
+
+    //maybe too long ?
+    //octree load 1 
+    //octree load 2 
+
+    //algo de comparaison
+
+
     return;
 }
 
