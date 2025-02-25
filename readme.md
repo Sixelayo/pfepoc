@@ -11,9 +11,15 @@ follow this tutorial :
 
 Installing pcl and all its dependency with vcpk may take an hour or so depening on your config
 
+TLDR :
+- install vcpkg
+- run vcpkg install script in powershell
+- `./vcpkg.exe install pcl[visualisation]` (not sure this was this ?)
+
 Also you should probably add cmake to your path if not already done.
 vcpkg will normaly download a suitable version at `...\vcpkg\downloads\tools\cmake-3.30.1-windows\cmake-3.30.1-windows-i386\bin`
 
+You probably need Visual studio btw
 
 ## fix
 
