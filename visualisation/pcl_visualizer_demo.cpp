@@ -50,7 +50,7 @@ namespace timer{
 void printUsage (){
     std::cout << "\n\nUsage: "<<" [options]\n\n"
                 << "First arg must be a mode (view, sample, compare).\n"
-                << "Please be gentle, the parsing is very rudimental so if things don't works check that you've given valid arguments\n"
+                << "Please be gentle, the parsing is very rudimental so if things don't works check that you've given valid arguments. All arguments are mandatory except []\n"
                 << "Aslo please don't look too closely at the implementaiton the CLI arguments are parsed like 3 times I was to lazy to do think correctly"
                 << "-------------------------------------------\n"
                 << "\t-h                        this help\n"
@@ -65,8 +65,8 @@ void printUsage (){
                 << "\t\t\tmdwo <float: dist,float: octree_dist>             Minimum distance using octree\n"
                 << "\t\t-file <path>               output save path\n"
                 << "\t\t-o <path>               output save path\n"
-                << "\t\t-binary                 save output as binary (default : ASCII)\n"
-                << "\t\t-prev                   if present, load a viewer with sampled cloud (no preview if asbent)\n"
+                << "\t\t[-binary]               save output as binary (default : ASCII)\n"
+                << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
                 << "\t-compare\n"
                 << "\t\t-oc1 <float>            octree param\n"
                 << "\t\t-oc2 <float>            octree param\n"
@@ -129,6 +129,31 @@ void mouseEventOccurred (const pcl::visualization::MouseEvent &event,
   }
 }
 
+namespace util{
+    void loadXYZ(const std::string& path, pcXYZ::Ptr cloud){
+        DEBUG("Loading : " << path << " ...\n");
+        // Load the PCD file
+        timer::start();
+        if (pcl::io::loadPCDFile<pcl::PointXYZ>(path, *cloud) == -1) {
+            PCL_ERROR("Couldn't read the PCD file.\n");
+            exit(-1);
+        }
+
+        timer::endLOG();
+        DEBUG(" Loaded " << cloud->width * cloud->height << " data points\n");
+    }
+
+    //loadXYZRGB
+    void saveXYZ(const std::string& path, pcXYZ::Ptr cloud, bool binary){
+        DEBUG("Saving " << cloud->width * cloud->height << " data points to " <<path << "\n");
+
+        timer::start();
+        pcl::io::savePCDFile(path, *cloud, binary);
+        timer::endLOG();
+        DEBUG(" Done")
+    }
+}
+
 namespace smp{
     enum Mode {
         RANDOM = 0,
@@ -182,20 +207,10 @@ void main_view(int argc, char** argv){
         }
     }
 
-    DEBUG("\t Loading : " << PATH << " ...\n");
-
-    // Create a Point Cloud object
+    
+    // Create a Point Cloud object and load it
     pcXYZ::Ptr cloud_ptr(new pcXYZ);
-
-    // Load the PCD file
-    timer::start();
-    if (pcl::io::loadPCDFile<pcl::PointXYZ>(PATH, *cloud_ptr) == -1) {
-        PCL_ERROR("Couldn't read the PCD file.\n");
-        exit(-1);
-    }
-
-    timer::endLOG();
-    DEBUG(" Loaded " << cloud_ptr->width * cloud_ptr->height << " data points ");
+    util::loadXYZ(PATH, cloud_ptr);
 
     pcl::visualization::PCLVisualizer::Ptr viewer;
     viewer = initViewer(cloud_ptr);
@@ -266,18 +281,8 @@ void main_sample(int argc, char** argv){
     pcXYZ::Ptr src_cloud_ptr(new pcXYZ);
     pcXYZ::Ptr new_cloud_ptr(new pcXYZ);
 
-    // Load the PCD file
-    timer::start();
-    if (pcl::io::loadPCDFile<pcl::PointXYZ>(PATH_SRC, *src_cloud_ptr) == -1) {
-        PCL_ERROR("Couldn't read the PCD file.\n");
-        exit(-1);
-    }
 
-    timer::endLOG();
-    DEBUG(" Loaded " << src_cloud_ptr->width * src_cloud_ptr->height << " data points\n");
-
-
-    
+    util::loadXYZ(PATH_SRC, src_cloud_ptr);    
 
     //construct out_cloud_ptr
     switch (sampling_method){
@@ -287,16 +292,11 @@ void main_sample(int argc, char** argv){
         case smp::MIN_DIST_OCTREE:
             break;
     }
-    //clear source in memoyr bc not needed anymore TODO maybe ?
+    //clear source in memoyr bc not needed anymore
     src_cloud_ptr->clear(); 
 
-
-    
     //save output
-    timer::start();
-    pcl::io::savePCDFile(PATH_OUT, *new_cloud_ptr, binary);
-    timer::endLOG();
-    DEBUG(" saved file at " << PATH_OUT << "\n");
+    util::saveXYZ(PATH_OUT, new_cloud_ptr, binary);
 
     if(preview){
         pcl::visualization::PCLVisualizer::Ptr viewer;

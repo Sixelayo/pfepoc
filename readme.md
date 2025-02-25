@@ -41,17 +41,17 @@ Program will be compiled in `visualisation/build/Release/` Folder
 
 Checking that it works :
 
-(in `/build/`) Try 
+(in `/visualisation/`) Try 
 
 Viewing :
 ```cmd
-.\Release\pcl_visualizer_demo.exe -view -file <any path>
+.\build\Release\pcl_visualizer_demo.exe -view -file ..\example_pcd\five_people.pcd
 ```
 
 Ressampling :
 ```cmd
-.\Release\pcl_visualizer_demo.exe -sample -mode rand 0.5 -file ..\..\example_pcd\foo1.pcd -o ..\..\example_pcd\fooBin.pcd  
-.\Release\pcl_visualizer_demo.exe -view -file ..\..\example_pcd\fooBin.pcd
+.\build\Release\pcl_visualizer_demo.exe -sample -mode rand 0.5 -file ..\example_pcd\foo1.pcd -o ..\example_pcd\fooBin.pcd -prev
+.\build\Release\pcl_visualizer_demo.exe -view -file ..\example_pcd\fooBin.pcd
 ```
 
 Comparing :
