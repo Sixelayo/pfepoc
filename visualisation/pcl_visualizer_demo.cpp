@@ -62,17 +62,19 @@ void printUsage (){
                 << "\t\t-mode <mode> <args...>  Depends on mode :\n"
                 << "\t\t\trand <float: proportion>                          Randomly keep a given % of points\n"
                 << "\t\t\tmd <float: dist>                                  Minimum distance, no acceleration\n"
-                << "\t\t\tmdwo <float: dist,float: octree_dist>             Minimum distance using octree\n"
-                << "\t\t-file <path>               output save path\n"
-                << "\t\t[-save <path>]               output save path\n"
+                << "\t\t\tmdwo <float: dist,float: octree_resolution>       Minimum distance using octree\n"
+                << "\t\t-file <path>            output save path\n"
+                << "\t\t[-save <path>]          output save path\n"
                 << "\t\t[-binary]               save output as binary (default : ASCII)\n"
                 << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
                 << "\t-compare\n"
-                << "\t\t-oc1 <float>            octree param\n"
-                << "\t\t-oc2 <float>            octree param\n"
-                << "\t\t-file1 <path>           origin point cloud path\n"
-                << "\t\t-file2 <path>           compared point cloud path\n"
-                << "\t\t-o <path>               output save path\n"
+                << "\t\t-file_src <path>        origin point cloud path\n"
+                << "\t\t-file_comp <path>       compared point cloud path\n"
+                << "\t\t-octree_res <float>     octree resolution\n"
+                << "\t\t-threshold <float>      minimum distance requiered for point to be considered different\n"
+                << "\t\t[-save <path>]          output save path\n"
+                << "\t\t[-binary]               save output as binary (default : ASCII)\n"
+                << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
                 << "\n\n";
     exit(0);
 }
@@ -143,7 +145,8 @@ namespace util{
         DEBUG(" Loaded " << cloud->width * cloud->height << " data points\n");
     }
 
-    //loadXYZRGB
+    //loadXYZRGB ...
+
     void saveXYZ(const std::string& path, pcXYZ::Ptr cloud, bool binary){
         DEBUG("Saving " << cloud->width * cloud->height << " data points to " <<path << "\n");
 
@@ -151,6 +154,19 @@ namespace util{
         pcl::io::savePCDFile(path, *cloud, binary);
         timer::endLOG();
         DEBUG(" Done")
+    }
+
+    //saveXYZRGB ...
+
+    Mytree loadOctree(pcXYZ::Ptr cloud, float resolution){
+        DEBUG("Loading " << cloud->size() << " data points to octree of resolution " << resolution <<"\n");
+        timer::start();
+        Mytree octree (resolution);
+        octree.setInputCloud (cloud);
+        octree.addPointsFromInputCloud();
+        timer::endLOG();
+        DEBUG(" done\n")
+        return octree; //RVO and std::move FTW !
     }
 }
 
@@ -168,7 +184,7 @@ namespace smp{
     };
     struct Arg_mdwo{
         float min_dist;
-        float octree_dist;
+        float octree_res;
     };
     //Accept points with a random probability
     void sample_random(pcXYZ::Ptr src_cloud, pcXYZ::Ptr new_cloud, const Arg_rand& args){
@@ -213,7 +229,7 @@ namespace smp{
     }
 
     //true if there's no point within mdsit of point in octree
-    bool dist_pointToCloudOCTREE(const pcl::PointXYZ& point, const Mytree& octree, float mdist) {
+    bool accept_pointToCloudOCTREE(const pcl::PointXYZ& point, const Mytree& octree, float mdist) {
         //TODO maybe an optimisation : do not create vector on stack each time ? pass as ref in argument and clear them at the end 
         std::vector<int> pointIdxRadiusSearch;
         std::vector<float> pointRadiusSquaredDistance;
@@ -222,19 +238,19 @@ namespace smp{
 
     void sample_mind_dist_octree(pcXYZ::Ptr src_cloud, pcXYZ::Ptr new_cloud, const Arg_mdwo args){
         float threshold = args.min_dist;
-        float octree_dist = args.octree_dist;
+        float resolution = args.octree_res;
 
-        DEBUG("Starting minimum distance sampling with octree. \n\tPoints are at least " << threshold << "AU appart\n\tOctree distance : "<< octree_dist <<" UA\n");
+        DEBUG("Starting minimum distance sampling with octree. \n\tPoints are at least " << threshold << "AU appart\n\tOctree resolution : "<< resolution <<" UA\n");
         timer::start();
 
         //step 1 create octree
-        Mytree octree(octree_dist);
+        Mytree octree(resolution);
         octree.setInputCloud(new_cloud);
 
         //step 2 loop over points
         for(pcl::PointXYZ point : src_cloud->points){
             // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
-            if (dist_pointToCloudOCTREE(point, octree, threshold)) {
+            if (accept_pointToCloudOCTREE(point, octree, threshold)) {
                 octree.addPointToCloud(point, new_cloud);
             }
         }
@@ -322,7 +338,7 @@ void main_sample(int argc, char** argv){
                 if(i+3 >= argc) exit(-1);
                 sampling_method = smp::MIN_DIST_OCTREE;
                 arg_mdwo.min_dist = atof(argv[i+2]);
-                arg_mdwo.octree_dist = atof(argv[i+3]);
+                arg_mdwo.octree_res = atof(argv[i+3]);
             }
             else{
                 std::cout << "wrong -mode usage";
@@ -367,21 +383,83 @@ void main_sample(int argc, char** argv){
 }
 
 void main_compare(int argc, char** argv){
-    DEBUG("mode : compare");
+    DEBUG("mode : compare\n");
+
+    std::string PATH_SRC;
+    std::string PATH_COMP;
+    std::string PATH_OUT;
+    bool preview = false;
+    bool binary = false;
+    float resolution; //no incidence on result, only compute time
+    float threshold; //related to sample args. Can make result vari
 
     //parse arg
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-file_src") {
+            if(i+1 == argc) exit(-1);
+            PATH_SRC = argv[i+1];
+        }else if (arg == "-file_comp") {
+            if(i+1 == argc) exit(-1);
+            PATH_COMP = argv[i+1];
+        }else if (arg == "-octree_res") {
+            if(i+1 == argc) exit(-1);
+            resolution = atof(argv[i+1]);
+        }else if (arg == "-threshold") {
+            if(i+1 == argc) exit(-1);
+            threshold = atof(argv[i+1]);
+        }else if (arg == "-save") {
+            if(i+1 == argc) exit(-1);
+            PATH_OUT = argv[i+1];
+        }else if (arg == "-prev") {
+            preview = true;
+        }else if (arg == "-binary") {
+            binary = true;
+        }
+    }
 
-    //load file 1
-    //load file 2
+    //create point cloud object
+    pcXYZ::Ptr src_cloud_ptr(new pcXYZ);
+    pcXYZ::Ptr comp_cloud_ptr(new pcXYZ);
+    pcXYZ::Ptr new_cloud_ptr(new pcXYZ); //todo needs to be XYZRGB, and rewrite viewing
 
-    //maybe too long ?
-    //octree load 1 
-    //octree load 2 
+
+    //if too long consider serializing octree
+    util::loadXYZ(PATH_SRC, src_cloud_ptr); 
+    Mytree src_octree = util::loadOctree(src_cloud_ptr, resolution);
+    
+    util::loadXYZ(PATH_COMP, comp_cloud_ptr); 
+    Mytree comp_octree = util::loadOctree(comp_cloud_ptr, resolution);
 
     //algo de comparaison
+    //placeholder for now, get only those in 2 but not in one/ TODO select mode ! union / dif
+    DEBUG("comparing both cloud\n");
+    timer::start();
+    for(pcl::PointXYZ point : src_cloud_ptr->points){
+        // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
+        if (smp::accept_pointToCloudOCTREE(point, comp_octree, threshold)) {
+            new_cloud_ptr->push_back(point);
+        }
+    }
+    timer::endLOG();
+    DEBUG("points int final cloud : " << new_cloud_ptr->size()<<"\n");
 
-
-    return;
+    //save output TODO RGB
+    if(!PATH_OUT.empty())
+        util::saveXYZ(PATH_OUT, new_cloud_ptr, binary);
+    
+    if(preview){
+        pcl::visualization::PCLVisualizer::Ptr viewer;
+        viewer = initViewer(new_cloud_ptr);
+        
+        //--------------------
+        // -----Main loop-----
+        //--------------------
+        while (!viewer->wasStopped ()){
+            viewer->spinOnce (100);
+            std::this_thread::sleep_for(100ms);
+        }
+    }
 }
 
 // --------------
