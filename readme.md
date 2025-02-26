@@ -63,7 +63,9 @@ Ressampling example :
 
 Comparing :
 ```cmd
-.\build\Release\pcl_visualizer_demo.exe -compare -file_src ..\example_pcd\sampled_kokurav1.pcd -file_comp ..\example_pcd\sampled_kokurav2.pcd -octree_res 2 -threshold 1 -only_comp -prev 
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.03 0.09 -file ..\example_pcd\foo1.pcd -save ..\example_pcd\samp1.pcd -prev -binary
+ .\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.03 0.09 -file ..\example_pcd\foo2.pcd -save ..\example_pcd\samp2.pcd -prev -binary
+.\build\Release\pcl_visualizer_demo.exe -compare -file_src ..\example_pcd\samp1.pcd -file_comp ..\example_pcd\samp2.pcd -save ..\example_pcd\comp.pcd -binary -prev -octree_res 0.09 -threshold 0.04 -all
 ```
 
 
