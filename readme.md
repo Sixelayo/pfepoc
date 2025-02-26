@@ -54,16 +54,16 @@ Viewing :
 .\build\Release\pcl_visualizer_demo.exe -view -file ..\example_pcd\five_people.pcd
 ```
 
-Ressampling :
+Ressampling example :
 ```cmd
 .\build\Release\pcl_visualizer_demo.exe -sample -mode rand 0.5 -file ..\example_pcd\foo1.pcd -o ..\example_pcd\fooBin.pcd -prev
 .\build\Release\pcl_visualizer_demo.exe -view -file ..\example_pcd\fooBin.pcd
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 1 2 -file O:\pfe\example_pcd\kokurav2.pcd -save ..\example_pcd\sampled_kokurav2.pcd -prev -binary
 ```
 
 Comparing :
 ```cmd
-.\Release\pcl_visualizer_demo.exe -foo
-.\Release\pcl_visualizer_demo.exe -foo
+.\build\Release\pcl_visualizer_demo.exe -compare -file_src ..\example_pcd\sampled_kokurav1.pcd -file_comp ..\example_pcd\sampled_kokurav2.pcd -octree_res 2 -threshold 1 -only_comp -prev 
 ```
 
 

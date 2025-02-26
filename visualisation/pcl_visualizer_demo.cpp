@@ -16,6 +16,7 @@ using namespace std::chrono_literals;
 #define DEBUG(x) std::cout << x;
 
 typedef pcl::PointCloud<pcl::PointXYZ> pcXYZ;
+typedef pcl::PointCloud<pcl::PointXYZRGB> pcXYZRGB;
 typedef pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> Mytree;
 
 /*
@@ -53,11 +54,12 @@ void printUsage (){
                 << "Please be gentle, the parsing is very rudimental so if things don't works check that you've given valid arguments. All arguments are mandatory except []\n"
                 << "Aslo please don't look too closely at the implementaiton the CLI arguments are parsed like 3 times I was to lazy to do think correctly"
                 << "-------------------------------------------\n"
-                << "\t-h                        this help\n"
+                << "\t-h                        this help (also work with any non valid arg)\n"
                 << "\t-seed <int>               force a random seed\n"
                 << "mode :\n"
                 << "\t-view\n"
                 << "\t\t-file <path>\n"
+                << "\t\t[-rgb]                  if the viewing rgb files\n"
                 << "\t-sample\n"
                 << "\t\t-mode <mode> <args...>  Depends on mode :\n"
                 << "\t\t\trand <float: proportion>                          Randomly keep a given % of points\n"
@@ -94,6 +96,20 @@ pcl::visualization::PCLVisualizer::Ptr initViewer (pcXYZ::ConstPtr cloud)
   viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
   viewer->addCoordinateSystem (0.2);
+  viewer->initCameraParameters ();
+  return (viewer);
+}
+pcl::visualization::PCLVisualizer::Ptr initViewerRGB (pcXYZRGB::ConstPtr cloud)
+{
+  // --------------------------------------------
+  // -----Open 3D viewer and add point cloud-----
+  // --------------------------------------------
+  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor (0, 0, 0);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+  viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
   return (viewer);
 }
@@ -148,7 +164,19 @@ namespace util{
         DEBUG(" Loaded " << cloud->width * cloud->height << " data points\n");
     }
 
-    //loadXYZRGB ...
+    void loadXYZRGB(const std::string& path, pcXYZRGB::Ptr cloud){
+        DEBUG("Loading : " << path << " ...\n");
+        // Load the PCD file
+        timer::start();
+        if (pcl::io::loadPCDFile<pcl::PointXYZRGB>(path, *cloud) == -1) {
+            PCL_ERROR("Couldn't read the PCD file.\n");
+            exit(-1);
+        }
+
+        timer::endLOG();
+        DEBUG(" Loaded " << cloud->width * cloud->height << " data points\n");
+    }
+
 
     void saveXYZ(const std::string& path, pcXYZ::Ptr cloud, bool binary){
         DEBUG("Saving " << cloud->width * cloud->height << " data points to " <<path << "\n");
@@ -159,7 +187,15 @@ namespace util{
         DEBUG(" Done")
     }
 
-    //saveXYZRGB ...
+    void saveXYZRGB(const std::string& path, pcXYZRGB::Ptr cloud, bool binary){
+        DEBUG("Saving " << cloud->width * cloud->height << " data points to " <<path << "\n");
+
+        timer::start();
+        pcl::io::savePCDFile(path, *cloud, binary);
+        timer::endLOG();
+        DEBUG(" Done")
+    }
+
 
     Mytree loadOctree(pcXYZ::Ptr cloud, float resolution){
         DEBUG("Loading " << cloud->size() << " data points to octree of resolution " << resolution <<"\n");
@@ -265,16 +301,16 @@ namespace smp{
 } //end namespace smp
 
 namespace cmp{
-    void compare(float threshold, pcXYZ::Ptr cloud1, Mytree& octree1, pcXYZ::Ptr cloud2, Mytree& octree2, pcXYZ::Ptr out, bool only_src, bool only_comp){
+    void compare(float threshold, pcXYZ::Ptr cloud1, Mytree& octree1, pcXYZ::Ptr cloud2, Mytree& octree2, pcXYZRGB::Ptr out, bool only_src, bool only_comp){
         if(only_src){
             DEBUG("comparing cloud 1 points to octree 2\n");
             timer::start();
             for(pcl::PointXYZ point : cloud1->points){
                 // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
-                if (smp::accept_pointToCloudOCTREE(point, octree2, threshold)) {
-                    out->push_back(point); //red (only in cloud 1)
-                }
-                //else out->push_back(point); green = common
+                if (smp::accept_pointToCloudOCTREE(point, octree2, threshold))
+                    out->emplace_back(point.x, point.y, point.z, 255,0,0); //red : poit only in cloud 1
+                else
+                    out->emplace_back(point.x, point.y, point.z, 0,255,0); //green : point in common
             }
             timer::endLOG();
             DEBUG("points only in source : " << out->size()<<"\n");
@@ -285,13 +321,13 @@ namespace cmp{
             timer::start();
             for(pcl::PointXYZ point : cloud2->points){
                 // Accept if the minimum distance to any point in the sampled cloud is greater than the threshold
-                if (smp::accept_pointToCloudOCTREE(point, octree1, threshold)) {
-                    out->push_back(point); //blue (only in cloud 2 )
-                }
-                //else : out->push_back(point); green = common
+                if (smp::accept_pointToCloudOCTREE(point, octree1, threshold))
+                    out->emplace_back(point.x, point.y, point.z, 0,0,255); //blue : point only in c loud 2
+                else
+                    out->emplace_back(point.x, point.y, point.z, 0,255,0); //green : point in common
             }
             timer::endLOG();
-            DEBUG("points only in source : " << out->size()<<"\n");
+            DEBUG("points only in compared : " << out->size()<<"\n");
         }
         
 
@@ -303,24 +339,32 @@ void main_view(int argc, char** argv){
     DEBUG("mode : view\n");
     
     std::string PATH;
+    bool rgb = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-file") {
             if(i+1 == argc) exit(-1);
             PATH = argv[i+1];
-        } else if (arg == "-foo") {
-            if(i+1 == argc) exit(-1);
+        } else if (arg == "-rgb") {
+            rgb = true;
         }
     }
 
+    //technically irrelevant variable living in scope but will do for now
+    pcl::visualization::PCLVisualizer::Ptr viewer;
+    pcXYZ::Ptr cloud_ptr(new pcXYZ);
+    pcXYZRGB::Ptr cloud_ptr_rgb(new pcXYZRGB);
     
     // Create a Point Cloud object and load it
-    pcXYZ::Ptr cloud_ptr(new pcXYZ);
-    util::loadXYZ(PATH, cloud_ptr);
-
-    pcl::visualization::PCLVisualizer::Ptr viewer;
-    viewer = initViewer(cloud_ptr);
+    if(!rgb){
+        util::loadXYZ(PATH, cloud_ptr);
+        viewer = initViewer(cloud_ptr);
+    } else{
+        util::loadXYZRGB(PATH, cloud_ptr_rgb);
+        viewer = initViewerRGB(cloud_ptr_rgb);
+    }
+    
     
     //--------------------
     // -----Main loop-----
@@ -469,7 +513,7 @@ void main_compare(int argc, char** argv){
     //create point cloud object
     pcXYZ::Ptr src_cloud_ptr(new pcXYZ);
     pcXYZ::Ptr comp_cloud_ptr(new pcXYZ);
-    pcXYZ::Ptr new_cloud_ptr(new pcXYZ); //todo needs to be XYZRGB, and rewrite viewing
+    pcXYZRGB::Ptr new_cloud_ptr(new pcXYZRGB); //todo needs to be XYZRGB, and rewrite viewing
 
 
     //if too long consider serializing octree
@@ -484,11 +528,11 @@ void main_compare(int argc, char** argv){
 
     //save output TODO RGB
     if(!PATH_OUT.empty())
-        util::saveXYZ(PATH_OUT, new_cloud_ptr, binary);
+        util::saveXYZRGB(PATH_OUT, new_cloud_ptr, binary);
     
     if(preview){
         pcl::visualization::PCLVisualizer::Ptr viewer;
-        viewer = initViewer(new_cloud_ptr);
+        viewer = initViewerRGB(new_cloud_ptr);
         
         //--------------------
         // -----Main loop-----
