@@ -101,23 +101,51 @@ cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=O:/vcpkg/scripts/buildsystem
 ```
 .\build\Release\pcl_visualizer_demo.exe -convert_XYZ_to_PCD -file_xyz ..\example_pcd\final\premier_nuage.xyz -file_pcd ..\example_pcd\final\nuage1_raw.pcd
 ```
+```
+.\build\Release\pcl_visualizer_demo.exe -convert_XYZ_to_PCD -file_xyz ..\example_pcd\final\second_nuage.xyz -file_pcd ..\example_pcd\final\nuage2_raw.pcd
+```
+
 ## first test low rez
 
 2. random downsampling for the moment (~20s per cloud)
 ```
 .\build\Release\pcl_visualizer_demo.exe -sample -mode rand 0.1 -file ..\example_pcd\final\nuage1_raw.pcd -save ..\example_pcd\final\nuage1_10percent.pcd -binary -prev
 ```
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode rand 0.1 -file ..\example_pcd\final\nuage2_raw.pcd -save ..\example_pcd\final\nuage2_10percent.pcd -binary -prev
+```
 
 3. Poisson disk downsampling (~1min per cloud)
 ```
 .\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.01 0.03 -file ..\example_pcd\final\nuage1_10percent.pcd -prev -save ..\example_pcd\final\nuage1_10percent_mdwo01_03.pcd -binary
 ```
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.01 0.03 -file ..\example_pcd\final\nuage2_10percent.pcd -prev -save ..\example_pcd\final\nuage2_10percent_mdwo01_03.pcd -binary
+```
 
 4. comparison
+```
+.\build\Release\pcl_visualizer_demo.exe -compare -file_src ..\example_pcd\final\nuage1_10percent_mdwo01_03.pcd -file_comp ..\example_pcd\final\nuage2_10percent_mdwo01_03.pcd -octree_res 0.06 -threshold 0.015 -all -prev
+```
 
 ## high rez
 
-2. Poisson disk downsampling
 
-3. comparison
+2. Poisson disk downsampling (~10min per cloud)
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.004 0.008 -file ..\example_pcd\final\nuage1_raw.pcd -prev -save ..\example_pcd\final\nuage1_raw__mdwo004_008.pcd -binary
+```
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.004 0.008 -file ..\example_pcd\final\nuage2_raw.pcd -prev -save ..\example_pcd\final\nuage2_raw__mdwo004_008.pcd -binary
+```
+
+3. comparison (~3min)
+
+```
+.\build\Release\pcl_visualizer_demo.exe -compare -file_src ..\example_pcd\final\nuage1_raw__mdwo004_008.pcd -file_comp ..\example_pcd\final\nuage2_raw__mdwo004_008.pcd -octree_res 0.008 -threshold 0.005 -all -prev -save ..\example_pcd\final\comp_raw_t007.pcd -binary
+```
+
+## very high rez
+
+compare raw cloud directly w/o any sampling
 
