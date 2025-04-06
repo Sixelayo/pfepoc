@@ -1,5 +1,6 @@
-/* \author Geoffrey Biggs */
+/* \original author Geoffrey Biggs -- modified by Alexis Just*/
 
+#include <fstream> //reading xyz
 #include <iostream>
 #include <thread>
 
@@ -65,7 +66,7 @@ void printUsage (){
                 << "\t\t\trand <float: proportion>                          Randomly keep a given % of points\n"
                 << "\t\t\tmd <float: dist>                                  Minimum distance, no acceleration\n"
                 << "\t\t\tmdwo <float: dist,float: octree_resolution>       Minimum distance using octree\n"
-                << "\t\t-file <path>            output save path\n"
+                << "\t\t-file <path>            file to sample path\n"
                 << "\t\t[-save <path>]          output save path\n"
                 << "\t\t[-binary]               save output as binary (default : ASCII)\n"
                 << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
@@ -80,6 +81,9 @@ void printUsage (){
                 << "\t\t[-save <path>]          output save path\n"
                 << "\t\t[-binary]               save output as binary (default : ASCII)\n"
                 << "\t\t[-prev]                 if present, load a viewer with sampled cloud (no preview if asbent)\n"
+                << "\t-convert_XYZ_to_PCD       almost hardcoded conversion for handling .xyz files\n"
+                << "\t\t-file_xyz <path>         path to the xyz file to read\n"
+                << "\t\t-file_pcd <path>         path to save the pcd output\n"
                 << "\n\n";
     exit(0);
 }
@@ -544,6 +548,56 @@ void main_compare(int argc, char** argv){
     }
 }
 
+void main_convert_XYZ_to_PCD(int argc, char** argv){
+    pcl::PointCloud<pcl::PointXYZ> cloud;
+    std::string PATH_XYZ;
+    std::string PATH_PCD;
+
+    //parse arg
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-file_xyz") {
+            if(i+1 == argc) exit(-1);
+            PATH_XYZ = argv[i+1];
+        }
+        if (arg == "-file_pcd") {
+            if(i+1 == argc) exit(-1);
+            PATH_PCD = argv[i+1];
+        }
+    }
+
+
+    std::ifstream file(PATH_XYZ);
+    if (!file.is_open()) {
+        std::cerr << "Could not open " << PATH_XYZ << std::endl;
+        exit(-1);
+    }
+
+    DEBUG("parsing file ...\n")
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty()) continue; // Skip empty lines
+
+        std::istringstream iss(line);
+        float x, y, z;
+        if (!(iss >> x >> y >> z)) continue; // Skip malformed lines
+
+        cloud.push_back(pcl::PointXYZ(x, y, z)); // Add point (ignoring color if present)
+    }
+    DEBUG("Done !");
+    file.close();
+    DEBUG(" - file closed\n");
+
+    cloud.width = cloud.size();
+    cloud.height = 1; // Unorganized point cloud
+    cloud.is_dense = true;
+
+
+    //force save in binary cuz too heavy
+    pcl::io::savePCDFile(PATH_PCD, cloud, true);
+    DEBUG("Saved " << cloud.size() << " points to" << PATH_PCD);
+}
+
 // --------------
 // -----Main-----
 // --------------
@@ -570,7 +624,8 @@ int main (int argc, char** argv){
     std::string arg = argv[1];
          if(arg == "-view")      main_view(argc, argv);        
     else if(arg == "-sample")    main_sample(argc, argv);        
-    else if(arg == "-compare")   main_compare(argc, argv);        
+    else if(arg == "-compare")   main_compare(argc, argv);
+    else if(arg == "-convert_XYZ_to_PCD")   main_convert_XYZ_to_PCD(argc, argv);
     else printUsage();
 }
 

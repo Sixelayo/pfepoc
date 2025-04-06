@@ -1,6 +1,7 @@
 #other files to ignore that weren't in template
 */build/
 */buildvsc/
+final/
 
 
 

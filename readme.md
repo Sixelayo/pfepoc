@@ -92,3 +92,32 @@ Node set up ... lorem impsum varying density ...
 different compiler should propably use ?
 cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=O:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
+
+# final
+
+## getting pcd format
+
+1. Converting XYZ files to PCD (took 10min per cloud on my computer)
+```
+.\build\Release\pcl_visualizer_demo.exe -convert_XYZ_to_PCD -file_xyz ..\example_pcd\final\premier_nuage.xyz -file_pcd ..\example_pcd\final\nuage1_raw.pcd
+```
+## first test low rez
+
+2. random downsampling for the moment (~20s per cloud)
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode rand 0.1 -file ..\example_pcd\final\nuage1_raw.pcd -save ..\example_pcd\final\nuage1_10percent.pcd -binary -prev
+```
+
+3. Poisson disk downsampling (~1min per cloud)
+```
+.\build\Release\pcl_visualizer_demo.exe -sample -mode mdwo 0.01 0.03 -file ..\example_pcd\final\nuage1_10percent.pcd -prev -save ..\example_pcd\final\nuage1_10percent_mdwo01_03.pcd -binary
+```
+
+4. comparison
+
+## high rez
+
+2. Poisson disk downsampling
+
+3. comparison
+
