@@ -84,7 +84,7 @@ You can find example pcd files in pcl git repo `\pcl-master\test`
 Install this add-on
 > https://github.com/MarkHedleyJones/blender-pcd-io
 
-Node set up ... lorem impsum varying density ...
+Node set up : check blend file
 
 # other
 
@@ -93,7 +93,7 @@ different compiler should propably use ?
 cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=O:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 
-# final
+# Example use
 
 ## getting pcd format
 
@@ -147,5 +147,10 @@ cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=O:/vcpkg/scripts/buildsystem
 
 ## very high rez
 
-compare raw cloud directly w/o any sampling
+compare raw cloud directly w/o any sampling (probably not a good idea)
+
+
+## post visualisation
+
+
 
